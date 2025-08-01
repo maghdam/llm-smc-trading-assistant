@@ -1,8 +1,10 @@
-# 💹 LLM-SMC Trading Assistant
+# 💹 LLM Trading Strategy Assistant (SMC by default)
 
-A full-stack, AI-powered trading assistant that integrates **Smart Money Concepts (SMC)**, **real-time market data**, **multimodal large language models (LLMs)**, and **chart image analysis** to automate trading decisions and execution.
+A full-stack, AI-powered trading assistant that supports any strategy you define — combining **real-time market data**, **chart image analysis**, and **multimodal large language models (LLMs)**.
 
-Built for traders, data scientists, and AI engineers exploring the intersection of finance, machine learning, and LLMs — all running locally without cloud dependencies.
+The current setup runs a complete **Smart Money Concepts (SMC)** strategy by default, but you can swap the LLM prompt instructions to apply **any strategy logic you want** (RSI divergence, OBV setups, trendline breaks, etc.).
+
+Built for traders, data scientists, and AI engineers exploring the intersection of finance, AI, and automation — fully local with no OpenAI or cloud dependencies.
 
 ---
 
@@ -48,7 +50,42 @@ Built for traders, data scientists, and AI engineers exploring the intersection 
 
 ```
 
+## 🧹 Strategy Customization (Plug in Your Logic)
+
+The LLM engine behind this assistant is **strategy-agnostic**. You can replace the default SMC logic by editing the prompt in `llm_analyzer.py`.
+
+In addition to modifying the prompt itself, you can also define or extract custom logic through additional scripts. For example, the SMC strategy uses `smc_features.py` to extract key structure, FVG, OB, and liquidity features. You can implement a similar helper for any other strategy (e.g., RSI, MACD, divergence, volume analysis).
+
+### 🔧 Prompt Example (inside `llm_analyzer.py`)
+
+```python
+prompt = f'''
+You are an expert in RSI Divergence trading.
+
+Using the provided OHLC data and chart:
+- Detect bullish/bearish RSI divergence
+- Confirm with trendline breaks or volume spikes
+- Return signal ("long"/"short"), SL, TP, and confidence score
+Only return JSON.
+'''
 ---
+
+### 🧠 Example LLM Prompt (for SMC)
+
+You are a professional Smart Money Concepts (SMC) trading analyst.
+
+Analyze the chart and OHLC for EURUSD (M15):
+- Market structure (CHoCH, BOS)
+- Liquidity sweeps or grabs
+- Fair Value Gaps (FVG)
+- Order Blocks (OBs)
+- Premium/Discount zones
+
+Suggest: signal, stop loss (sl), take profit (tp), and confidence.
+Return JSON only.
+
+---
+
 
 ## 🛠️ Setup Instructions
 
