@@ -1,0 +1,9 @@
+services:
+  llm-smc:
+    container_name: llm-smc
+    build:
+      context: .              # Root context (contains backend/)
+      dockerfile: backend/Dockerfile
+    ports:
+      - "4000:4000"
+    restart: unless-stopped

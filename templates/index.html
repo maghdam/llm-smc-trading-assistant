@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MT5 Live Dashboard</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body style="background-color: black; color: white;">
+
+<!-- Dropdowns and controls -->
+<select id="symbolDropdown"></select>
+<select id="timeframeDropdown">
+  <option value="M1">M1</option>
+  <option value="M5">M5</option>
+  <option value="M15">M15</option>
+  <option value="H1">H1</option>
+  <option value="H4">H4</option>
+  <option value="D1">D1</option>
+</select>
+
+<div id="indicatorChecklist">
+  <label><input type="checkbox" value="SMA (20)"> SMA (20)</label><br>
+  <label><input type="checkbox" value="EMA (20)"> EMA (20)</label><br>
+  <label><input type="checkbox" value="VWAP"> VWAP</label><br>
+  <label><input type="checkbox" value="Bollinger Bands"> Bollinger Bands</label><br>
+</div>
+<button id="analyzeBtn">Run AI Analysis</button>
+<button id="placeBtn">Place Trade</button>
+
+<div id="loading" style="display:none; color: lightblue;">🔄 Analyzing with LLaMA Vision...</div>
+
+<div id="chart" style="height:600px;"></div>
+<pre id="llmOutput" style="margin-top:20px; background:#111; padding:10px; color:#9ef; border-radius:8px;"></pre>
+
+
+<script>
+const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+    layout: {
+        background: { color: 'black' },
+        textColor: 'white'
+    },
+    grid: {
+        vertLines: { color: '#2B2B43' },
+        horzLines: { color: '#363C4E' },
+    },
+    timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+    }
+});
+const candleSeries = chart.addCandlestickSeries();
+let indicatorSeries = {}; // To track and clear indicators
+
+async function loadSymbols() {
+    const response = await fetch('/api/symbols');
+    let symbols = await response.json();
+
+    symbols.sort();  // Sort here
+
+    const dropdown = document.getElementById('symbolDropdown');
+    symbols.forEach(sym => {
+        const option = document.createElement('option');
+        option.value = sym;
+        option.text = sym;
+        dropdown.add(option);
+    });
+}
+
+
+// Format indicator key like "SMA (20)" → "SMA_20"
+function formatIndicatorKey(name) {
+    return name.replace(/[\s\(\)-]/g, "_");
+}
+
+// Fetch and render data
+async function fetchCandles() {
+    const symbol = document.getElementById('symbolDropdown').value;
+    const timeframe = document.getElementById('timeframeDropdown').value;
+    const indicators = Array.from(document.querySelectorAll('#indicatorChecklist input:checked')).map(el => el.value);
+
+    const url = `/api/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}&indicators=${indicators.map(encodeURIComponent).join('&indicators=')}`;
+    const response = await fetch(url);
+    const result = await response.json();
+
+    // Load candles
+    candleSeries.setData(result.candles || []);
+
+    // Clear previous indicators
+    for (const key in indicatorSeries) {
+        indicatorSeries[key].setData([]);
+    }
+
+    // Plot indicators
+    for (const [key, seriesData] of Object.entries(result.indicators || {})) {
+        if (!indicatorSeries[key]) {
+            indicatorSeries[key] = chart.addLineSeries({ color: 'yellow', lineWidth: 1 });
+        }
+        indicatorSeries[key].setData(seriesData);
+    }
+}
+
+
+// Trigger AI analysis
+function renderAnalysis(output) {
+    const out = document.getElementById('llmOutput');
+
+    if (!output) {
+        out.innerHTML = '<div style="color: orange;">⚠️ No analysis received.</div>';
+        return;
+    }
+
+    if (typeof output === 'object') {
+        // Clone the object to modify for display
+        const displayObj = structuredClone(output);
+
+        // Extract and remove the explanation block if present
+        const explanationRaw = displayObj.reasons?.[0] || '';
+        delete displayObj.reasons;
+
+        // Format the JSON without the long reason
+        const jsonHtml = `<pre style="color:#9ef;">${JSON.stringify(displayObj, null, 2)}</pre>`;
+
+        // Format the explanation with paragraphs
+        let explanation = explanationRaw
+            .replace(/^```(json)?/g, '')
+            .replace(/```$/g, '')
+            .replace(/Explanation:\s*/i, '')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n\d+\.\s/g, '</p><p>• ')
+            .replace(/\n/g, '<br>');
+
+        explanation = `<div style="margin-top:15px; font-family:Segoe UI, sans-serif; color:#ccc;"><p>${explanation}</p></div>`;
+
+        out.innerHTML = jsonHtml + explanation;
+    } else {
+        // fallback for unexpected cases
+        out.innerHTML = `<pre>${output.toString()}</pre>`;
+    }
+}
+
+
+// 👉 single source of truth to run analysis
+async function runAIAnalysis() {
+    const symbol      = document.getElementById('symbolDropdown').value;
+    const timeframe   = document.getElementById('timeframeDropdown').value;
+    const indicators  = Array.from(
+        document.querySelectorAll('#indicatorChecklist input:checked')
+    ).map(el => el.value);
+
+    document.getElementById('loading').style.display = 'block';
+    renderAnalysis('');   // clear old
+
+    try {
+        const resp   = await fetch('/api/analyze', {
+            method : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body   : JSON.stringify({ symbol, timeframe, indicators })
+        });
+        const json   = await resp.json();
+        renderAnalysis(json.analysis);
+    } catch (err) {
+        renderAnalysis(`⚠️ Failed: ${err}`);
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+/* hook the button once */
+document.getElementById('analyzeBtn').addEventListener('click', runAIAnalysis);
+document.getElementById('analyzeBtn').addEventListener('click', runAIAnalysis);
+document.getElementById('placeBtn').addEventListener('click', placeOrderFromLLM);  // <-- new
+
+// Auto refresh every 5 seconds
+setInterval(fetchCandles, 5000);
+document.getElementById('symbolDropdown').addEventListener('change', fetchCandles);
+document.getElementById('timeframeDropdown').addEventListener('change', fetchCandles);
+document.querySelectorAll('#indicatorChecklist input').forEach(el => {
+    el.addEventListener('change', fetchCandles);
+});
+
+async function placeOrderFromLLM() {
+  const txt = document.getElementById('llmOutput').textContent.trim();
+  if (!txt) return alert('⚠️ No analysis JSON available.');
+
+  let data;
+  try { data = JSON.parse(txt); }
+  catch { return alert('⚠️ Cannot parse analysis JSON.'); }
+
+  const symbol = document.getElementById('symbolDropdown').value;
+
+  const resp = await fetch('/api/execute_trade', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      symbol,
+      action: data.signal === 'long' ? 'BUY' : 'SELL',
+      lot: 0.1,
+      order_type: 'MARKET',
+      stop_loss: data.sl,
+      take_profit: data.tp
+    })
+  });
+  const resJson = await resp.json();
+  alert(JSON.stringify(resJson, null, 2));
+}
+
+// Init
+loadSymbols().then(fetchCandles);
+</script>
+
+</body>
+</html>
