@@ -162,7 +162,8 @@ The frontend dashboard includes:
 
 ### 📸 Dashboard Example
 
-![Dashboard Screenshot](images/dashboard-chart-tools.png)
+![Dashboard Screenshot](images/dashboard-chart-tools1.png)
+![Dashboard Screenshot](images/dashboard-chart-tools2.png)
 
 
 ---

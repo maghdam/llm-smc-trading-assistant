@@ -130,7 +130,18 @@ function renderAnalysis(output) {
             .replace(/\n\d+\.\s/g, '</p><p>• ')
             .replace(/\n/g, '<br>');
 
-        explanation = `<div style="margin-top:15px; font-family:Segoe UI, sans-serif; color:#ccc;"><p>${explanation}</p></div>`;
+        explanation = `
+        <div style="
+            margin-top:15px;
+            font-family:Segoe UI, sans-serif;
+            color:#ccc;
+            white-space: pre-wrap;
+            line-height: 1.4;
+        ">
+            ${explanationRaw}
+        </div>
+        `;
+
 
         out.innerHTML = jsonHtml + explanation;
     } else {
