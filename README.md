@@ -43,7 +43,6 @@ Built for traders, data scientists, and AI engineers exploring the intersection 
 ├── static/                  # JS/CSS assets (if needed)
 ├── templates/index.html     # Lightweight frontend with Plotly chart
 ├── requirements.txt
-├── Dockerfile
 ├── docker-compose.yml
 └── images/
 
