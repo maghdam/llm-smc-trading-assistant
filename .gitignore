@@ -25,10 +25,6 @@ signals.db
 # Mac/Linux system files
 .DS_Store
 
-# Plotly or chart export images (optional, if generated dynamically)
-chart.png
-*.png
-
 # Docker artifacts (if mounted)
 *.log
 
