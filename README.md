@@ -68,7 +68,7 @@ Using the provided OHLC data and chart:
 - Return signal ("long"/"short"), SL, TP, and confidence score
 Only return JSON.
 '''
----
+```
 
 ### 🧠 Example LLM Prompt (for SMC)
 
