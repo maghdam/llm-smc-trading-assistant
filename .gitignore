@@ -31,3 +31,6 @@ chart.png
 
 # Docker artifacts (if mounted)
 *.log
+
+docker_usage_guide.md
+
